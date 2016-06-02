@@ -260,7 +260,13 @@ module OmniAuth
       end
 
       def log_puts(settings, method, key, value)
-        puts "OmniAuth::Strategies::SAML##{method} issuer=#{settings.issuer} idp_entity_id=#{settings.idp_entity_id} #{key}=#{value}"
+        organization_uuid = settings.issuer.split("?oid=")[1]
+        list = "saml:#{organization_uuid}"
+        redis = Redis::Namespace.new(ENV["DEFAULT_HOST"], redis: Redis.current)
+        redis.pipelined do
+          redis.lpush list, "#{Time.now.utc} #{method} idp_entity_id=#{settings.idp_entity_id} #{key}=#{value}"
+          redis.ltrim list, 0, 250
+        end
       end
     end
   end
