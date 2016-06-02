@@ -41,7 +41,11 @@ module OmniAuth
         authn_request = OneLogin::RubySaml::Authrequest.new
         settings = OneLogin::RubySaml::Settings.new(options)
 
-        redirect(authn_request.create(settings, additional_params))
+        redirect_url = authn_request.create(settings, additional_params)
+
+        log_puts(settings, "request_phase", "redirect_url", redirect_url)
+
+        redirect(redirect_url)
       end
 
       def callback_phase
@@ -165,6 +169,8 @@ module OmniAuth
         response.attributes["fingerprint"] = options.idp_cert_fingerprint
         response.soft = false
 
+        log_puts(settings, "handle_response", "response", response.document.to_s)
+
         response.is_valid?
         @name_id = response.name_id
         @attributes = response.attributes
@@ -200,6 +206,9 @@ module OmniAuth
 
         logout_response = OneLogin::RubySaml::Logoutresponse.new(raw_response, settings, :matches_request_id => session["saml_transaction_id"])
         logout_response.soft = false
+
+        log_puts(settings, "handle_logout_response", "logout_response", logout_response.document.to_s)
+
         logout_response.validate
 
         session.delete("saml_uid")
@@ -211,6 +220,8 @@ module OmniAuth
       def handle_logout_request(raw_request, settings)
         logout_request = OneLogin::RubySaml::SloLogoutrequest.new(raw_request)
 
+        log_puts(settings, "handle_logout_request", "logout_request", logout_request.document.to_s)
+
         if logout_request.is_valid? &&
           logout_request.name_id == session["saml_uid"]
 
@@ -219,8 +230,11 @@ module OmniAuth
 
           # Generate a response to the IdP.
           logout_request_id = logout_request.id
-          logout_response = OneLogin::RubySaml::SloLogoutresponse.new.create(settings, logout_request_id, nil, RelayState: relay_state)
-          redirect(logout_response)
+          redirect_url = OneLogin::RubySaml::SloLogoutresponse.new.create(settings, logout_request_id, nil, RelayState: relay_state)
+
+          log_puts(settings, "handle_logout_request", "redirect_url", redirect_url)
+  
+          redirect(redirect_url)
         else
           raise OmniAuth::Strategies::SAML::ValidationError.new("SAML failed to process LogoutRequest")
         end
@@ -238,7 +252,15 @@ module OmniAuth
           settings.name_identifier_value = session["saml_uid"]
         end
 
-        logout_request.create(settings, RelayState: relay_state)
+        redirect_url = logout_request.create(settings, RelayState: relay_state)
+
+        log_puts(settings, "generate_logout_request", "redirect_url", redirect_url)
+
+        redirect_url
+      end
+
+      def log_puts(settings, method, key, value)
+        puts "OmniAuth::Strategies::SAML##{method} issuer=#{settings.issuer} idp_entity_id=#{settings.idp_entity_id} #{key}=#{value}"
       end
     end
   end
