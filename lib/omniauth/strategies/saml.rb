@@ -260,7 +260,8 @@ module OmniAuth
       end
 
       def log_puts(settings, method, key, value)
-        organization_uuid = settings.issuer.split("?oid=")[1]
+        match = /\/saml\/([^\/]+)\/issuer/.match(settings.issuer)
+        organization_uuid = match[1]
         list = "saml:#{organization_uuid}"
         redis = Redis::Namespace.new(ENV["DEFAULT_HOST"], redis: Redis.current)
         redis.pipelined do
