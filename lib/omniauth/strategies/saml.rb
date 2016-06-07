@@ -265,7 +265,7 @@ module OmniAuth
           organization_uuid = match[1]
           list = "saml:#{organization_uuid}"
         else
-          list = settings.issuer
+          list = "saml:#{settings.issuer}"
         end
         redis = Redis::Namespace.new(ENV["DEFAULT_HOST"], redis: Redis.current)
         redis.pipelined do
